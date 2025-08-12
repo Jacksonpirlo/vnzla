@@ -1,14 +1,16 @@
 import pkg from 'pg';
+import dotenv from 'dotenv';
+dotenv.config();
 const { Pool } = pkg;
 
-// Configuración de PostgreSQL con datos reales
+// Configuración de PostgreSQL desde variables de entorno
 const db = new Pool({
-  host: 'aws-0-us-east-2.pooler.supabase.com',
-  user: 'postgres.3lw3b0m103st4pr3nd10
-  password: 'password', // remplaza con tu contraseña de Supabase
-  database: 'postgres',
-  port: 6543,
-  ssl: { rejectUnauthorized: false } // Supabase requiere SSL
+  host: process.env.PGHOST || 'aws-0-us-east-2.pooler.supabase.com',
+  user: process.env.PGUSER || 'postgres.wsuvuakmzpezlmfpqded',
+  password: process.env.PGPASSWORD || '1234',
+  database: process.env.PGDATABASE || 'postgres',
+  port: Number(process.env.PGPORT || 6543),
+  ssl: process.env.PGSSL === 'false' ? false : { rejectUnauthorized: false }
 });
 
 export default db;

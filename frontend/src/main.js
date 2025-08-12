@@ -10,6 +10,9 @@ const routes = {
   "/products": "../public/template/product/products.html",
   "/newproduct": "../public/template/product/addProduct.html",
   "/editProduct": "../public/template/product/editProduct.html",
+  "/uploadData": "../public/template/csv/csv.html",
+  // Alias para evitar error por mayúsculas/minúsculas
+  "/uploaddata": "../public/template/csv/csv.html",
 
   // Login and Register
   "/registerUser": "../public/template/auth/registerUser.html",
@@ -42,7 +45,7 @@ function setupNavigation() {
     nav.innerHTML = `
       <a href="/products" data-link>Productos</a>
       <a href="/newproduct" data-link>Nuevo Producto</a>
-      <a href="/uploaddata" data-link>Upload Data</a>
+      <a href="/uploadData" data-link>Upload Data</a>
       <a href="/logout" data-link id="close-sesion">Logout</a>
     `;
   } else if (userRole === "user") {
@@ -80,7 +83,10 @@ async function navigate(pathname) {
   if (pathname === "/products") setupProducts();
   if (pathname === "/newproduct") setupAddProductForm();
   if (pathname === "/editProduct") setupEditProductForm();
-  
+
+  // CSV Upload
+  if (pathname === "/uploadData" || pathname === "/uploaddata") setupCsvUpload();
+
   // Setup navigation after loading content
   setupNavigation();
 }
@@ -403,3 +409,35 @@ window.addEventListener("popstate", () => {
   console.log(location);
   navigate(location.pathname);
 });
+
+function setupCsvUpload() {
+  const form = document.getElementById('csvForm');
+  if (!form) return;
+  const fileInput = document.getElementById('csvFile');
+  const btn = document.getElementById('uploadBtn');
+  const out = document.getElementById('output');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!fileInput?.files?.length) return;
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Procesando...'; }
+    if (out) { out.hidden = true; out.textContent = ''; }
+
+    const data = new FormData();
+    data.append('file', fileInput.files[0]);
+
+    try {
+      const res = await fetch('http://localhost:3000/api/csv/upload', {
+        method: 'POST',
+        body: data
+      });
+      const json = await res.json();
+      if (out) { out.hidden = false; out.textContent = JSON.stringify(json, null, 2); }
+    } catch (err) {
+      if (out) { out.hidden = false; out.textContent = 'Error: ' + (err?.message || err); }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Subir y procesar'; }
+    }
+  });
+}

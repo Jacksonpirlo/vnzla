@@ -1,10 +1,64 @@
 import express, { json } from 'express';
 import cors from 'cors';
 import db from './db/db.js'
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import { parseAndInsertCSV } from './csvFolder/csvfile.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
 app.use(json());
+
+// Health
+app.get('/health', (req, res) => res.json({ ok: true }));
+
+// Asegurar carpeta uploads
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configuración de Multer para subir archivos CSV a una carpeta temporal
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadsDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || '.csv';
+      cb(null, `csv_${Date.now()}${ext}`);
+    }
+  }),
+  fileFilter: (req, file, cb) => {
+    const isCsv = file.mimetype === 'text/csv' || file.originalname.toLowerCase().endsWith('.csv');
+    if (!isCsv) return cb(new Error('Solo se permiten archivos .csv'));
+    cb(null, true);
+  },
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+// Endpoint para subir CSV y cargarlo a la DB
+app.post('/api/csv/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No se recibió archivo' });
+
+    const result = await parseAndInsertCSV(req.file.path);
+
+    // Limpia el archivo temporal (no hace fallar si ya no existe)
+    await fs.promises.unlink(req.file.path).catch(() => {});
+
+    res.json({ message: 'CSV procesado', ...result });
+  } catch (err) {
+    console.error('Error procesando CSV:', err);
+    res.status(500).json({ error: err.message || 'Error interno' });
+  }
+});
 
 // Obtener todos los productos
 app.get('/api/products', async (req, res) => {
@@ -90,5 +144,5 @@ app.post('/api/users/addUser', async (req, res) => {
   }
 });
 
-
-app.listen(3000, () => console.log('Servidor corriendo en http://localhost:3000'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${PORT}`));

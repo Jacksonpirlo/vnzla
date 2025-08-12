@@ -1,11 +1,11 @@
 product,price,amount,isActive
-Laptop,950.00,25,TRUE
-Mouse,15.99,150,TRUE
-Keyboard,45.50,80,TRUE
-Monitor,220.00,40,FALSE
-Desk,120.75,10,TRUE
-Chair,89.99,5,FALSE
-USB Cable,7.50,300,TRUE
-Webcam,60.00,30,TRUE
-Headphones,35.25,60,FALSE
-Speaker,49.99,20,TRUE
+Tablet,450.00,18,TRUE
+Wireless Mouse,19.99,200,TRUE
+Mechanical Keyboard,75.50,50,FALSE
+Curved Monitor,310.00,25,TRUE
+Standing Desk,250.75,8,FALSE
+Gaming Chair,150.49,12,TRUE
+HDMI Cable,9.99,500,TRUE
+Action Camera,120.00,15,TRUE
+Bluetooth Headset,55.25,35,TRUE
+Smart Speaker,79.99,40,FALSE
