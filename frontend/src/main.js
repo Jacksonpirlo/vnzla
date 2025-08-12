@@ -323,26 +323,18 @@ function setupLoginForm() {
     const user = document.getElementById("user")?.value || "";
     const pass = document.getElementById("password")?.value || "";
 
-    const  data = await axios.get("http://localhost:3000/api/users");
-    const users = data.data || [];
+    try {
+      const { data } = await axios.post("http://localhost:3000/api/auth/login", { user, password: pass });
 
-    // Buscar usuario que coincida
-    const foundUser = users.find(
-      (u) => u.name === user && String(u.password) === pass
-    );
-
-    if (foundUser) {
-      localStorage.setItem("Auth", "true");
-      localStorage.setItem("role", foundUser.role);
-      setupNavigation();
-      
-      // Redirigir según el rol del usuario
-      if (foundUser.role === "admin") {
-        navigate("/products"); // Los admins van a productos donde pueden gestionar
+      if (data?.ok) {
+        localStorage.setItem("Auth", "true");
+        localStorage.setItem("role", data.role || "user");
+        setupNavigation();
+        navigate("/products");
       } else {
-        navigate("/products"); // Los users también van a productos pero solo pueden ver
+        alert("usuario o contraseña son incorrectos");
       }
-    } else {
+    } catch (err) {
       alert("usuario o contraseña son incorrectos");
     }
   });
@@ -368,32 +360,15 @@ function register() {
     const rol = document.getElementById("role")?.value || "user";
     const password = document.getElementById("password")?.value || "";
 
-    const data = await axios.get("http://localhost:3000/api/users");
-    const users = data.data || [];
-
-    // Verificar si el usuario ya existe
-    const existingUser = users.find((u) => u.name === user);
-    
-    if (existingUser) {
-      alert("El usuario ya existe");
-      return;
-    }
-
-    // Registrar nuevo usuario
-    await axios.post("http://localhost:3000/api/users", { name: user, lastName, department, age, salary, startDate, role: rol, password });
-    
-    // Guardar en localStorage para mantener sesión iniciada
-    localStorage.setItem("Auth", "true");
-    localStorage.setItem("role", rol);
-    
-    alert("Usuario registrado exitosamente");
-    setupNavigation();
-    
-    // Redirigir según el rol del usuario
-    if (rol === "admin") {
+    try {
+      await axios.post("http://localhost:3000/api/users", { name: user, lastName, department, age, salary, startDate, role: rol, password });
+      localStorage.setItem("Auth", "true");
+      localStorage.setItem("role", rol);
+      alert("Usuario registrado exitosamente");
+      setupNavigation();
       navigate("/products");
-    } else {
-      navigate("/products");
+    } catch (err) {
+      alert("Error registrando usuario");
     }
   });
 }

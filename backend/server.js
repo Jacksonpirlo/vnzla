@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { parseAndInsertCSV } from './csvFolder/csvfile.js';
 import dotenv from 'dotenv';
+import bcrypt from 'bcrypt';
 
 dotenv.config();
 
@@ -125,7 +126,8 @@ app.post('/api/users', async (req, res) => {
   const { name, lastName, department, age, salary, startDate, password, role } = req.body;
   console.log('Datos recibidos:', req.body);
   try {
-    await db.query('INSERT INTO empleados (name, "lastName", department, age, salary, "startDate", password, role) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)', [name, lastName, department, age, salary, startDate, password, role]);
+    const hashed = await bcrypt.hash(String(password), 10);
+    await db.query('INSERT INTO empleados (name, "lastName", department, age, salary, "startDate", password, role) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)', [name, lastName, department, age, salary, startDate, hashed, role]);
     res.json({ message: 'Usuario agregado' });
   } catch (err) {
     console.error('Error al agregar usuario:', err);
@@ -137,10 +139,51 @@ app.post('/api/users/addUser', async (req, res) => {
   const { user, lastName, department, age, salary, startDate, password, role } = req.body;
    console.log('Datos recibidos:', req.body);
   try {
-    await db.query('INSERT INTO empleados (user, "lastName", department, age, salary, "startDate", password, role) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)', [user, lastName, department, age, salary, startDate, password, role]);
+    const hashed = await bcrypt.hash(String(password), 10);
+    await db.query('INSERT INTO empleados (user, "lastName", department, age, salary, "startDate", password, role) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)', [user, lastName, department, age, salary, startDate, hashed, role]);
     res.json({ message: 'Usuario agregado' });
   } catch (err) {
     res.status(500).json(err);
+  }
+});
+
+// Login: verifica password con bcrypt
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const username = req.body.user || req.body.name;
+    const password = String(req.body.password || '');
+    if (!username || !password) return res.status(400).json({ error: 'Faltan credenciales' });
+
+    const { rows } = await db.query('SELECT id, name, "user", password, role FROM empleados WHERE name = $1 OR "user" = $1 LIMIT 1', [username]);
+    const u = rows[0];
+    if (!u) return res.status(401).json({ error: 'Usuario o contraseña inválidos' });
+
+    const stored = u.password == null ? '' : String(u.password);
+
+    let ok = false;
+    if (stored.startsWith('$2')) {
+      // Parece hash bcrypt
+      ok = await bcrypt.compare(password, stored);
+    } else {
+      // Posible texto plano (compatibilidad)
+      ok = stored === password;
+      if (ok) {
+        // Actualiza a hash para mayor seguridad
+        try {
+          const newHash = await bcrypt.hash(password, 10);
+          await db.query('UPDATE empleados SET password = $1 WHERE id = $2', [newHash, u.id]);
+        } catch (_) {
+          // Silenciar error de actualización, el login sigue siendo válido
+        }
+      }
+    }
+
+    if (!ok) return res.status(401).json({ error: 'Usuario o contraseña inválidos' });
+
+    res.json({ ok: true, role: u.role || 'user', user: u.name || u.user });
+  } catch (err) {
+    console.error('Error en login:', err);
+    res.status(500).json({ error: err.message || 'Error interno' });
   }
 });
 
